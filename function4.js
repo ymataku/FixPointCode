@@ -38,7 +38,7 @@ ReadData(process.argv.slice(2))
         }).filter(e=>e)
         const network_error = NetworkError(data,N)
         network_error.forEach(e=>{
-            // console.log("ネットワークのエラー発生時間: "+e.error_start+" ネットワークのエラー終了時間: "+e.error_stop+" ネットワークIPアドレス: "+e.network_ip)
+            console.log("ネットワークのエラー発生時間: "+e.error_start+" ネットワークのエラー終了時間: "+e.error_stop+" ネットワークIPアドレス: "+e.network_ip)
         })
     })
 
@@ -114,27 +114,29 @@ function NetworkError(data,N){
         }) 
         delete network_status[key]
     })
-    
-    let tmp = []
+
+    /**
+     * サブネット内に二つ以上のサーバがある場合に、全てのサーバから応答がない時間があるかを判別
+     * network_statusに格納しているエラーサーバの情報を扱いやすいようにerror_statusに代入する
+     */
+    let error_status = []
     const keys = Object.keys(network_status)
     keys.forEach(key=>{
         network_status[key].forEach((v,i,arr)=>{
             v.info.forEach(e=>{
-                tmp.push([v.ip,key,e.start,e.stop])
+                error_status.push([v.ip,key,e.start,e.stop])
             })
         })
     })
-    
-    //サブネット内に二つ以上のサーバがある場合に、全てのサーバから応答がない時間があるかを判別
-    for(let i in tmp){
-        let test = tmp[i]
-        for(let j in tmp){
-            if(test[0] == tmp[j][0] || test[1] !== tmp[j][1]) continue
-            if((test[3]<tmp[j][3])&&(test[2]>tmp[j][2])) {
-                network_error.push({'error_start':test[2],'error_stop':test[3],'network_ip':test[1],'ip':test[0]})
+    for(let i in error_status){
+        let error_info = error_status[i]
+        for(let j in error_status){
+            if(error_info[0] == error_status[j][0] || error_info[1] !== error_status[j][1]) continue
+            if((error_info[3]<error_status[j][3])&&(error_info[2]>error_status[j][2])) {
+                network_error.push({'error_start':error_info[2],'error_stop':error_info[3],'network_ip':error_info[1],'ip':error_info[0]})
                 continue
             }
-            if((test[3] > tmp[j][2])&&(test[3] < tmp[j][3])&&(test[2]<tmp[j][2])) network_error.push({'error_start':test[2],'error_stop':test[3],'network_ip':test[1],'ip':test[0]+':'+tmp[j][0]})   
+            if((error_info[3] > error_status[j][2])&&(error_info[3] < error_status[j][3])&&(error_info[2]<error_status[j][2])) network_error.push({'error_start':error_info[2],'error_stop':error_info[3],'network_ip':error_info[1],'ip':error_info[0]+':'+error_status[j][0]})   
         }
     }
     return network_error
