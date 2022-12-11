@@ -141,6 +141,10 @@ function NetworkError(data,N){
     }
     return network_error
 }
+
+const subnet_mask = cidr2subnetmask(Number(v.cidr))
+const network_ip = long2ip(getNetworkAddr(ip2long(v.ip),ip2long(subnet_mask)))
+
 const cidr2long = (cidr) => parseInt(String("").padStart(cidr, '1').padEnd(32, '0'), 2)
 const cidr2subnetmask = (num) => long2ip(cidr2long(Number(num)))
 const getNetworkAddr = (ip, subnetmask) => (ip & subnetmask) >>> 0
@@ -155,3 +159,10 @@ const long2ip = (num) => {
     ].map(e => parseInt(e, 2)).join('.')
 }
 const ip2long = (ip) => parseInt(ip2bin(ip), 2)
+
+function test(ip,cidr){
+    const subnet_mask = parseInt(String("").padStart(cidr, '1').padEnd(32, '0'), 2)
+    const binary_ip = ip.split(".").map(e => Number(e).toString(2).padStart(8, '0')).join('')
+    const network_ip = (parseInt(binary_ip,2) & parseInt(subnet_mask,2)) >>> 0
+    
+}
