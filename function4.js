@@ -29,18 +29,16 @@ function ReadData(argv){
     })
 }
 
-ReadData(process.argv.slice(2))
-    .then((value)=>{
-        //データを配列にして格納
-        const N = value[1]
-        const data = value[0].map((value,index) => {
-            return value.split(',')
-        }).filter(e=>e)
-        const network_error = NetworkError(data,N)
-        network_error.forEach(e=>{
-            console.log("ネットワークのエラー発生時間: "+e.error_start+" ネットワークのエラー終了時間: "+e.error_stop+" ネットワークIPアドレス: "+e.network_ip)
-        })
-    })
+function GetNetworkIP(ip,cidr){
+    const subnet_binary = String("").padStart(cidr, '1').padEnd(32, '0')
+    const ip_binary = ip.split(".").map(e => Number(e).toString(2).padStart(8, '0')).join('')
+    
+    const networkip_number = (parseInt(ip_binary,2) & parseInt(subnet_binary,2)) >>> 0
+    const networkip_binary =  networkip_number.toString(2).padStart(32, '0')
+  
+    const network_ip = [networkip_binary.slice(0, 8),networkip_binary.slice(8, 16),networkip_binary.slice(16, 24),networkip_binary.slice(24, 32)].map(e => parseInt(e, 2)).join('.')
+    return network_ip
+}
 
 
 function NetworkError(data,N){
@@ -53,8 +51,7 @@ function NetworkError(data,N){
     let network_status = {}
     //サブネットのネットワークアドレスとそれに属するサーバのIPアドレスを紐づけて、ネットワークの概略をnetwork_statusとして作成
     ip_split.forEach(v=>{
-        const subnet_mask = cidr2subnetmask(Number(v[1]))
-        const network_ip = long2ip(getNetworkAddr(ip2long(v[0]),ip2long(subnet_mask)))
+        const network_ip = GetNetworkIP(v[0],v[1])
         Object.keys(network_status).includes(network_ip) ? network_status[network_ip].push({'ip':v[0],'info':[]}):network_status[network_ip] =[{'ip':v[0],'info':[]}]
     })
    
@@ -78,8 +75,7 @@ function NetworkError(data,N){
     //エラーが発生したサーバの情報をnetwork_statusに格納していく
     let network_keys = Object.keys(network_status)
     error_server.forEach(v=>{
-        const subnet_mask = cidr2subnetmask(Number(v.cidr))
-        const network_ip = long2ip(getNetworkAddr(ip2long(v.ip),ip2long(subnet_mask)))
+        const network_ip = GetNetworkIP(v.ip,v.cidr)
         if(!(network_keys.includes(network_ip))) return
         network_status[network_ip].forEach(e=>{
             if(e.ip !== v.ip) return
@@ -99,10 +95,8 @@ function NetworkError(data,N){
             }
         }
     })
-    if(Object.keys(network_status).length == 0) {
-        console.log('ネットワークに異常はありません')
-        return
-    }
+    if(Object.keys(network_status).length == 0) return []
+    
     
     //サブネット内に一つしかサーバがない場合、そのサーバから反応がない時間を調べる
     let network_error = []
@@ -129,40 +123,44 @@ function NetworkError(data,N){
         })
     })
     for(let i in error_status){
-        let error_info = error_status[i]
+        const error = error_status[i]
         for(let j in error_status){
-            if(error_info[0] == error_status[j][0] || error_info[1] !== error_status[j][1]) continue
-            if((error_info[3]<error_status[j][3])&&(error_info[2]>error_status[j][2])) {
-                network_error.push({'error_start':error_info[2],'error_stop':error_info[3],'network_ip':error_info[1],'ip':error_info[0]})
+            if(error[0] == error_status[j][0] || error[1] !== error_status[j][1]) continue
+            if((error[3]<error_status[j][3])&&(error[2]>error_status[j][2])) {
+                network_error.push({'error_start':error[2],'error_stop':error[3],'network_ip':error[1],'ip':error[0]})
                 continue
             }
-            if((error_info[3] > error_status[j][2])&&(error_info[3] < error_status[j][3])&&(error_info[2]<error_status[j][2])) network_error.push({'error_start':error_info[2],'error_stop':error_info[3],'network_ip':error_info[1],'ip':error_info[0]+':'+error_status[j][0]})   
+            if((error[3] > error_status[j][2])&&(error[3] < error_status[j][3])&&(error[2]<error_status[j][2])) network_error.push({'error_start':error[2],'error_stop':error[3],'network_ip':error[1],'ip':error[0]+':'+error_status[j][0]})   
         }
     }
+    
     return network_error
 }
 
-const subnet_mask = cidr2subnetmask(Number(v.cidr))
-const network_ip = long2ip(getNetworkAddr(ip2long(v.ip),ip2long(subnet_mask)))
 
-const cidr2long = (cidr) => parseInt(String("").padStart(cidr, '1').padEnd(32, '0'), 2)
-const cidr2subnetmask = (num) => long2ip(cidr2long(Number(num)))
-const getNetworkAddr = (ip, subnetmask) => (ip & subnetmask) >>> 0
-const ip2bin = (ip) => ip.split(".").map(e => Number(e).toString(2).padStart(8, '0')).join('')
-const long2ip = (num) => {
-    let bin = Number(num).toString(2).padStart(32, '0')
-    return [
-        bin.slice(0, 8),
-        bin.slice(8, 16),
-        bin.slice(16, 24),
-        bin.slice(24, 32),
-    ].map(e => parseInt(e, 2)).join('.')
-}
-const ip2long = (ip) => parseInt(ip2bin(ip), 2)
-
-function test(ip,cidr){
-    const subnet_mask = parseInt(String("").padStart(cidr, '1').padEnd(32, '0'), 2)
-    const binary_ip = ip.split(".").map(e => Number(e).toString(2).padStart(8, '0')).join('')
-    const network_ip = (parseInt(binary_ip,2) & parseInt(subnet_mask,2)) >>> 0
-    
-}
+ReadData(process.argv.slice(2))
+    .then((value)=>{
+        //データを配列にして格納
+        const N = value[1]
+        const data = value[0].map((value,index) => {
+            return value.split(',')
+        }).filter(e=>e)
+        
+        const network_error = NetworkError(data,N)
+        if(network_error.length === 0){
+            console.log('ネットワークに異常はありません')
+            return
+        }
+        network_error.forEach(e=>{
+            const start = e.error_start.toString()
+            const end = e.error_stop.toString()
+            const start_date = new Date(Number(start.slice(0,4)), Number(start.slice(4,6)) - 1, Number(start.slice(6,8)), Number(start.slice(8,10)), Number(start.slice(10,12)), Number(start.slice(12,14)))
+            if(end === '-'){
+                console.log('ネットワークIPアドレス: '+e.network_ip+' エラーが起きた時刻: '+start_date.toLocaleString()+' 解消されていません')
+                return
+            }
+            const end_date = new Date(Number(end.slice(0,4)), Number(end.slice(4,6)) - 1, Number(end.slice(6,8)), Number(end.slice(8,10)), Number(end.slice(10,12)), Number(end.slice(12,14)))
+            // console.log('IPアドレス: '+e.ip+' エラーが起きた時刻: '+start_date.toLocaleString()+' エラーが解消された時刻: '+end_date.toLocaleString()+'.'+end.split('.')[1])
+            console.log(" ネットワークIPアドレス: "+e.network_ip+' , '+"ネットワークのエラー発生期間: "+start_date.toLocaleString()+" ~ "+end_date.toLocaleString()+'.'+end.split('.')[1])
+        })
+    })

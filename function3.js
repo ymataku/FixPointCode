@@ -31,18 +31,6 @@ function ReadData(argv){
     })
 }
 
-ReadData(process.argv.slice(2))
-    .then((value)=>{
-        //データを配列にして格納
-        const N = value[1]
-        const m = value[2]
-        const t = value[3]
-        const data = value[0].map((value,index) => {
-            return value.split(',')
-        }).filter(e=>e)
-        console.log(ServerLode(data,N,m,t))
-    })
-
 function ServerLode(data,N,m,t){
     let timeout_server = {}
     let error_server = []
@@ -64,63 +52,47 @@ function ServerLode(data,N,m,t){
         })
     })
 
-    let server_load = []
-    let server_fuka = {}
-    for(let i=2;i<data.length;i++){
-        if(data[i][2] === '-') continue
-        Object.keys(server_fuka).includes(data[i][1])? server_fuka[data[i][1]].reply.push(data[i][2]):server_fuka[data[i][1]] = {'reply':[data[i][2]],'avg':[],'start_time':data[i][0]}
-        if(server_fuka[data[i][1]].reply.length >= m) {
-            const  sum = server_fuka[data[i][1]].reply.reduce((a,b)=>a + b)
-            server_fuka[data[i][1]].avg.push([sum/m,server_fuka[data[i][1]].start_time,data[i][0]])
-            server_fuka[data[i][1]].reply.length = 0
-        }
-
-        // if((Number(data[i][2]) + Number(data[i-1][2]) + Number(data[i-2][2]))/m > t) server_load.push([(Number(data[i][2]) + Number(data[i-1][2]) + Number(data[i-2][2]))/m,Number(data[i-2][0]),Number(data[i][0])])
-    }
-    const keys = Object.keys(server_fuka)
-    let fuka = []
-    keys.forEach(key=>{
-        server_fuka[key].avg.forEach(v=>{
-            if(v[0]>=t) fuka.push([v[1],v[2],key])
-        })
-        
-        // if(server_fuka[e].avg[0] >= t) console.log(server_fuka[e].avg[1]+':'+server_fuka[e].avg[2])
+    let server_load = {}
+    data.forEach(e=>{
+        if(e[2] === '-') return 
+        Object.keys(server_load).includes(e[1])? server_load[e[1]].reply.push(e[2]):server_load[e[1]] = {'reply':[e[2]],'avg':[],'start_time':e[0]}
+        if(server_load[e[1]].reply.length >= m) {
+            const  sum = server_load[e[1]].reply.reduce((a,b)=>Number(a) + Number(b))
+            server_load[e[1]].avg.push([(sum/m).toFixed(1),server_load[e[1]].start_time,e[0]])
+            server_load[e[1]].reply.length = 0
+        }  
     })
-    let network_error = []
-    for(let i in fuka){
-        let error_info = fuka[i]
-        for(let j in fuka){
-            if(error_info[0] == fuka[j][0] || error_info[1] !== fuka[j][1]) continue
-            if((error_info[3]<fuka[j][3])&&(error_info[2]>fuka[j][2])) {
-                network_error.push({'error_start':error_info[2],'error_stop':error_info[3],'network_ip':error_info[1],'ip':error_info[0]})
-                continue
-            }
-            if((error_info[3] > fuka[j][2])&&(error_info[3] < fuka[j][3])&&(error_info[2]<fuka[j][2])) network_error.push({'error_start':error_info[1],'error_stop':fuka[j][2],'ip':error_info[2]})   
-        }
-    }
-    console.log(network_error)
-
-    return fuka
-    // return server_fuka
-    // console.log(server_load)
-    // let test = []
-    // let count = 0
-    // // console.log(server_load)
-    // for(let i=0;i<server_load.length - 1;i++){
-    //     if(server_load[i][2] < server_load[i+1][1]) {
-    //         test.push([server_load[i][1],server_load[i][2]])
-    //         count = 0
-    //     }
-    //     if(server_load[i][2] >= server_load[i+1][1]){
-    //         if(count == 1){
-    //             let tmp = test[test.length - 1][0]
-    //             test.pop()
-    //             test.push([tmp,server_load[i+1][2]])
-    //         }else{
-    //             test.push([server_load[i][1],server_load[i][2]])
-    //         }
-    //         count = 1
-    //     }
-    // }
-    // return test
+  
+    const keys = Object.keys(server_load)
+    let slow_term = []
+    keys.forEach(key=>{
+        server_load[key].avg.forEach(v=>{
+            if(v[0]>=t) slow_term.push([v[1],v[2],key])
+        })
+    })
+    return slow_term
 }
+
+ReadData(process.argv.slice(2))
+    .then((value)=>{
+        const N = value[1]
+        const m = value[2]
+        const t = value[3]
+        const data = value[0].map((value,index) => {
+            return value.split(',')
+        }).filter(e=>e)
+
+        const server_lode = ServerLode(data,N,m,t)
+        if(server_lode.length === 0){
+            console.log('サーバに負荷は低い状態です')
+            return
+        }
+
+        server_lode.forEach(e=>{
+            const start = e[0]
+            const end = e[1]
+            const start_date = new Date(Number(start.slice(0,4)), Number(start.slice(4,6)) - 1, Number(start.slice(6,8)), Number(start.slice(8,10)), Number(start.slice(10,12)), Number(start.slice(12,14)))
+            const end_date = new Date(Number(end.slice(0,4)), Number(end.slice(4,6)) - 1, Number(end.slice(6,8)), Number(end.slice(8,10)), Number(end.slice(10,12)), Number(end.slice(12,14)))
+            console.log('IPアドレス: '+e[2]+' , '+'負荷が大きかった期間: '+start_date.toLocaleString()+' ~ '+end_date.toLocaleString())
+        })
+    })

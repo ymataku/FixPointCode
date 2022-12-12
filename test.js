@@ -6,4 +6,5 @@ let test = {
 test['A'].avg.push(test['A'].ip.reduce((a,b) => a+b))
 
 test['A'].ip.length = 0
-console.log(test)
+// console.log(test)
+console.log(parseInt('12',8))

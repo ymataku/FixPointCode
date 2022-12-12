@@ -41,6 +41,7 @@ function FindError(log){
         Object.keys(timeout_server).includes(v[1]) ? timeout_server[v[1]].push(v[0]):timeout_server[v[1]] = [v[0]]
         
     })
+    
     const timeout_keys = Object.keys(timeout_server)
     if(timeout_keys.length === 0) return error_server
 
@@ -53,9 +54,25 @@ function FindError(log){
 
 ReadData(process.argv.slice(2))
     .then((value)=>{
-        //データを配列にして格納
         const data = value.map((value,index) => {
             return value.split(',')
         }).filter(e=>e)
-        console.log(FindError(data))
+        const error_server = FindError(data)
+        if(error_server.length === 0){
+            console.log('エラーは発生していません')
+            return 
+        }
+        
+        error_server.forEach(e=>{
+            const start = e.start.toString()
+            const end = e.stop.toString()
+            const start_date = new Date(Number(start.slice(0,4)), Number(start.slice(4,6)) - 1, Number(start.slice(6,8)), Number(start.slice(8,10)), Number(start.slice(10,12)), Number(start.slice(12,14)))
+            if(end === '-'){
+                console.log('IPアドレス: '+e.ip+' エラーの発生期間 '+start_date.toLocaleString()+' ~ 不明')
+                return
+            }
+            
+            const end_date = new Date(Number(end.slice(0,4)), Number(end.slice(4,6)) - 1, Number(end.slice(6,8)), Number(end.slice(8,10)), Number(end.slice(10,12)), Number(end.slice(12,14)))
+            console.log('IPアドレス: '+e.ip+' , '+' エラーの発生期間: '+start_date.toLocaleString()+' ~ '+end_date.toLocaleString()+'.'+end.split('.')[1])
+        })
     })
