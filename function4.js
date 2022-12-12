@@ -10,7 +10,8 @@ const readline = require("readline")
 function ReadData(argv){
     return new Promise((resolve,rejects)=>{
         try{
-            const stream = fs.createReadStream(argv[0], "utf8");
+            const file_path = './csv/'+argv[0]
+            const stream = fs.createReadStream(file_path, "utf8");
             const reader = readline.createInterface({ input: stream });
             let lines = []
             const N = argv[1]
