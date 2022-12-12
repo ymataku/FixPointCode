@@ -30,6 +30,12 @@ function ReadData(argv){
     })
 }
 
+/**
+ * 
+ * @param {string} ip IPアドレスを.でつないだ32bitの文字列
+ * @param {string} cidr CIDRの文字列
+ * @returns 入力したIPアドレスのネットワークアドレスを返します。
+ */
 function GetNetworkIP(ip,cidr){
     const subnet_binary = String("").padStart(cidr, '1').padEnd(32, '0')
     const ip_binary = ip.split(".").map(e => Number(e).toString(2).padStart(8, '0')).join('')
@@ -42,9 +48,9 @@ function GetNetworkIP(ip,cidr){
 }
 
 
-function NetworkError(data,N){
+function NetworkError(log,N){
     //IPアドレスだけを取り出す
-    const ip = data.map(v=>v[1]).filter((v,i,arr)=>{
+    const ip = log.map(v=>v[1]).filter((v,i,arr)=>{
         if(arr.indexOf(v) == i) return v
     })
     //IPアドレスとCIDRの情報を分けて取得
@@ -59,11 +65,12 @@ function NetworkError(data,N){
     //エラーが発生したサーバの情報を取り出す
     let timeout_server = {}
     let error_server = []
-    data.forEach(v=>{
+    const m_s = 0.01
+    log.forEach(v=>{
         if(!Object.keys(timeout_server).includes(v[1]) && v[2] !== '-') return 
         if(Object.keys(timeout_server).includes(v[1]) && v[2] !== '-') {
             // エラーと判別した際、初めてエラーが起こったサーバの時刻を引く
-            if(timeout_server[v[1]].length >= N) error_server.push({'ip':v[1].split('/')[0],'cidr':v[1].split('/')[1],'start':Number(timeout_server[v[1]][0]),'stop':Number(v[0]) + Number(v[2])*0.01})
+            if(timeout_server[v[1]].length >= N) error_server.push({'ip':v[1].split('/')[0],'cidr':v[1].split('/')[1],'start':Number(timeout_server[v[1]][0]),'stop':Number(v[0]) + Number(v[2])*m_s})
             //エラーと判別してた最後のサーバの時刻を引く
             // if(timeout_server[v[1]].length >= N) error_server.push({'ip':v[1],'time_diff':Number(v[0]) - Number(timeout_server[v[1]][timeout_server[v[1]].length - 1]) + Number(v[2])*0.01})
             delete timeout_server[v[1]]
@@ -161,7 +168,6 @@ ReadData(process.argv.slice(2))
                 return
             }
             const end_date = new Date(Number(end.slice(0,4)), Number(end.slice(4,6)) - 1, Number(end.slice(6,8)), Number(end.slice(8,10)), Number(end.slice(10,12)), Number(end.slice(12,14)))
-            // console.log('IPアドレス: '+e.ip+' エラーが起きた時刻: '+start_date.toLocaleString()+' エラーが解消された時刻: '+end_date.toLocaleString()+'.'+end.split('.')[1])
             console.log(" ネットワークIPアドレス: "+e.network_ip+' , '+"ネットワークのエラー発生期間: "+start_date.toLocaleString()+" ~ "+end_date.toLocaleString()+'.'+end.split('.')[1])
         })
     })

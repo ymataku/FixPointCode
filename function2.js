@@ -34,23 +34,24 @@ function ReadData(argv){
 function FindError(log,N){
     let timeout_server = {}
     let error_server = []
+    const m_s = 0.01
     log.forEach(v=>{
         if(!Object.keys(timeout_server).includes(v[1]) && v[2] !== '-') return 
         if(Object.keys(timeout_server).includes(v[1]) && v[2] !== '-') {
-            // エラーと判別した際、初めてエラーが起こったサーバの時刻を引く
-            if(timeout_server[v[1]].length >= N) error_server.push({'ip':v[1].split('/')[0],'start':Number(timeout_server[v[1]][0]),'stop':Number(v[0]) + Number(v[2])*0.01})
-            //エラーと判別してた最後のサーバの時刻を引く
-            // if(timeout_server[v[1]].length >= N) error_server.push({'ip':v[1],'time_diff':Number(v[0]) - Number(timeout_server[v[1]][timeout_server[v[1]].length - 1]) + Number(v[2])*0.01})
+            if(timeout_server[v[1]].length >= N) error_server.push({'ip':v[1].split('/')[0],'start':Number(timeout_server[v[1]][0]),'stop':Number(v[0]) + Number(v[2])*m_s})
             delete timeout_server[v[1]]
             return
         }
         Object.keys(timeout_server).includes(v[1]) ? timeout_server[v[1]].push(v[0]):timeout_server[v[1]] = [v[0]]
     })
 
+    //エラーが解決されていないサーバがあるかの判別
     const timeout_keys = Object.keys(timeout_server)
     if(timeout_keys.length === 0) return error_server
-
+  
+    //エラーが解決されていないサーバがある時の処理
     timeout_keys.forEach(key=>{
+        if(timeout_server[key].length < N) return
         error_server.push({'ip':key,'start':timeout_server[key][0],'stop':'-'})
     })
     return error_server
@@ -59,7 +60,6 @@ function FindError(log,N){
 
 ReadData(process.argv.slice(2))
     .then((value)=>{
-        //データを配列にして格納
         const N = value[1]
         const data = value[0].map((value,index) => {
             return value.split(',')

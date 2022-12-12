@@ -32,10 +32,10 @@ function ReadData(argv){
     })
 }
 
-function ServerLode(data,N,m,t){
+function ServerLode(log,N,m,t){
     let timeout_server = {}
     let error_server = []
-    data.forEach(v=>{
+    log.forEach(v=>{
         if(!Object.keys(timeout_server).includes(v[1]) && v[2] !== '-') return 
         if(Object.keys(timeout_server).includes(v[1]) && v[2] !== '-') {
             if(timeout_server[v[1]].length >= N) error_server.push([v[1],timeout_server[v[1]].join(',')])
@@ -48,13 +48,13 @@ function ServerLode(data,N,m,t){
     error_server.forEach(e=>{
         const error_time = e[1].split(',')
         const error_server = e[0]
-        data = data.filter(v=>{
+        log = log.filter(v=>{
             if(!(error_server == v[1] && error_time.includes(v[0]))) return v
         })
     })
 
     let server_load = {}
-    data.forEach(e=>{
+    log.forEach((e,i)=>{
         if(e[2] === '-') return 
         Object.keys(server_load).includes(e[1])? server_load[e[1]].reply.push(e[2]):server_load[e[1]] = {'reply':[e[2]],'avg':[],'start_time':e[0]}
         if(server_load[e[1]].reply.length >= m) {
@@ -63,7 +63,7 @@ function ServerLode(data,N,m,t){
             server_load[e[1]].reply.length = 0
         }  
     })
-  
+    
     const keys = Object.keys(server_load)
     let slow_term = []
     keys.forEach(key=>{
